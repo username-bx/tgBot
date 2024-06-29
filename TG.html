@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot Control</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<h1>机器人开关</h1>
+<button id="toggleButton">开始轮询</button>
+<button id="build">build admin dev</button>
+<button id="fetchOnce">fetch once</button>
+<button id="buildStatus">get build status</button>
+
+<h5>订单清单</h5>
+<div id="orders"></div>
+
+<script>
+    $(document).ready(function() {
+        // 参数配置
+        // marlow 机器人
+        const TOKEN = "7358488910:AAHNzVTpLMprFGH4tLIgrkZ1nwP0AIQCLuk";
+        const TARGET_CHANNEL_ID = -4240348799;
+        const URL = `https://api.telegram.org/bot${TOKEN}/getUpdates`;
+        const LAST_UPDATE_ID_FILE = "last_update_id.txt";
+        const ORDERS_FILE = "orders.json";
+        const loopTime = 5000; // 五秒一次
+        let pollingInterval;
+        let bottonSwitch = true;
+
+        // 开始拉接口数据
+        function startPolling() {
+            pollingInterval = setInterval(fetchUpdates, loopTime);
+            $('#toggleButton').text('停止轮询');
+            bottonSwitch = false;
+            console.log("开启中");
+        }
+
+        // 停止拉接口数据
+        function stopPolling() {
+            clearInterval(pollingInterval);
+            $('#toggleButton').text('开始轮询');
+            bottonSwitch = true;
+            console.log("关闭中");
+        }
+
+        // 取最后一条TG更新
+        function readLastUpdateId() {
+            try {
+                return parseInt(localStorage.getItem(LAST_UPDATE_ID_FILE)) || 0;
+            } catch (error) {
+                console.error('Error reading last update id:', error);
+                return 0;
+            }
+        }
+
+        // 写入最后一条TG更新
+        function writeLastUpdateId(lastUpdateId) {
+            try {
+                localStorage.setItem(LAST_UPDATE_ID_FILE, lastUpdateId.toString());
+            } catch (error) {
+                console.error('Error writing last update id:', error);
+            }
+        }
+
+        // 读取本地缓存 订单列表
+        function readOrders() {
+            try {
+                return JSON.parse(localStorage.getItem(ORDERS_FILE)) || {};
+            } catch (error) {
+                console.error('Error reading orders:', error);
+                return {};
+            }
+        }
+
+        // 写入订单到本地缓存
+        function writeOrders(orders) {
+            try {
+                localStorage.setItem(ORDERS_FILE, JSON.stringify(orders));
+            } catch (error) {
+                console.error('Error writing orders:', error);
+            }
+        }
+
+        // 格式化 订单
+        function formatOrders(orders) {
+            let formattedMessage = "订单清单：<br>";
+            for (let name in orders) {
+                formattedMessage += `商品名称:${name} <br>`
+                for (let username in orders[name]) {
+                    formattedMessage += `${username} * ${orders[name][username]}<br>`;
+                }
+            }
+            return formattedMessage;
+        }
+
+        // 处理 接收订单逻辑
+        function handleOrderCommand(chatId, username, name) {
+            // 获取订单
+            let orders = readOrders();
+
+            // 判断内容物
+            if (orders[name]) { // 已存在订单
+                if(orders[name][username]){ // 追加
+                    orders[name][username]++
+                } else { // 没定过
+                    orders[name][username] = 1
+                }
+            } else { // 不存在初始化
+                orders[name] = {}
+                orders[name][username] = 1;
+            }
+
+            // 写入订单
+            writeOrders(orders);
+            const message = `接收 ${username} 订单：${name} * ${orders[name][username]}`;
+            // 发送TG
+            sendMessage(chatId, message);
+        }
+
+        // 计算总数
+        function handleTotalCommand(chatId, username) {
+            let orders = readOrders();
+            let message = formatOrders(orders);
+
+            // 更新网页
+            $('#orders').html(message);
+            // 发送TG
+            sendMessage(chatId, message);
+        }
+
+        // 清空本地缓存
+        function handleCleanCommand(chatId, username) {
+            localStorage.setItem(ORDERS_FILE, '{}');
+            // 清空网页
+            $('#orders').html("订单列表已清空。");
+            // 发消息
+            sendMessage(chatId, "订单列表已清空。");
+        }
+
+        $('#build').click(function() {
+            handleBuildCommand(TARGET_CHANNEL_ID, 'admin-dev');
+        });
+        $('#fetchOnce').click(function() {
+            fetch(URL)
+        });
+        // 执行构建
+        function handleBuildCommand(chatId, username) {
+            // 发消息
+            sendMessage(chatId, "开始构建中...");
+            // 执行构建
+            const buildUrl = 'http://18.167.78.168:8080/view/dev/job/admin-ui-dev/build?token=bot'
+            fetch(buildUrl).then(data => {
+                console.log(data)
+                sendMessage(chatId, "构建完成");
+            }).catch(error => {
+                console.error('Error build:', error);
+                sendMessage(chatId, "构建失败");
+            
+            })
+        }
+
+        $('#buildStatus').click(function() {
+            getBuildStatus();
+        });
+        // 获取构建状态
+        function getBuildStatus() {
+            const getBuildStatus = 'http://18.167.78.168:8080/view/dev/job/admin-ui-dev/lastBuild/'
+            fetch(getBuildStatus)
+        }
+
+        // 发消息
+        function sendMessage(chatId, text) {
+            const url = `https://api.telegram.org/bot${TOKEN}/sendMessage`;
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: text
+                })
+            })
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch(error => console.error('Error sending message:', error));
+        }
+
+        // 拉资料从TG
+        function fetchUpdates() {
+            let lastUpdateId = readLastUpdateId();
+            let offset = lastUpdateId + 1;
+
+            fetch(`${URL}?offset=${offset}`)
+                .then(response => response.json())
+                .then(data => {
+                    const messages = data.result || [];
+                    console.log("拉取数据:" + JSON.stringify(messages));
+                    messages.forEach(message => {
+                        const updateId = message.update_id;
+                        if (message.edited_message) { // 更新的不处理 跳过
+                            return;
+                        }
+                        if(!message.message){ //非预期
+                            return;
+                        }
+
+                        const chatId = message.message.chat.id;
+                        const text = message.message.text;
+                        const username = message.message.from.first_name;
+
+                        if (updateId) {
+                            writeLastUpdateId(updateId);
+                        }
+
+                        if (chatId === TARGET_CHANNEL_ID && text) {
+                            console.debug('----TARGET_CHANNEL_ID----', 1)
+                            if (text.startsWith('/order ')) {
+                                const name = text.substring('/order '.length);
+                                handleOrderCommand(chatId, username, name);
+                            } else if (text === '/total') {
+                                handleTotalCommand(chatId, username);
+                            } else if (text === '/clean') {
+                                handleCleanCommand(chatId, username);
+                            }else if (text === '/admin-dev') {
+                                handleBuildCommand(chatId, username);
+                            }
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching updates:', error));
+        }
+
+        // 开关轮询
+        $('#toggleButton').click(function() {
+            if (!bottonSwitch) {
+                stopPolling();
+            } else {
+                startPolling();
+            }
+        });
+
+        // Start polling initially
+        // startPolling();
+    });
+</script>
+</body>
+</html>
