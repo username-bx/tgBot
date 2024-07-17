@@ -193,4 +193,35 @@ bot.onText(/^\/q/, (msg) => {
 });
 bot.on("message", (msg) => {
   console.log("---msg---", msg);
+  const chatRecordPath = getChatRecordPath()
+  writeFile(chatRecordPath, JSON.stringify(msg));
 });
+
+
+const fs = require("fs");
+// const moment = require("moment");
+
+function writeFile(path, data) {
+  fs.writeFile(path, data + ',\n', {flag: 'a'},(err) => {
+    if (err) throw err;
+    console.log("Data written to file");
+  });
+}
+
+
+const path = require('path')
+// 根据日期检查聊天存放目录,不存在则创建,然后返回目录
+const getChatRecordPath = () => {
+  const date = new Date()
+  const toPad2 = num => num.padStart(2, '0')
+  const chatRecordPath = path.join(
+    __dirname,
+    `${date.getFullYear()}${toPad2(`${date.getMonth() + 1}`)}${toPad2(
+      `${date.getDate()}`
+    )}_chatRecord.json`
+  )
+  // if (!fs.existsSync(chatRecordPath)) {
+  //   fs.mkdirSync(chatRecordPath)
+  // }
+  return chatRecordPath
+}
