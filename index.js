@@ -1,6 +1,6 @@
 const { buildJob, getBuildInfo, getQueue } = require('./jenkins');
 const { writeFile, getChatRecordPath } = require('./saveFile');
-const { Kitten } = require('./mongodb');
+const { insertOneMessagePB, insertOneMessageChatRecord } = require('./mongodb');
 const { bot } = require('./telegram');
 
 
@@ -33,6 +33,9 @@ bot.on("callback_query", async (callbackQuery) => {
     res = await getBuildInfo("member-ui");
   } else if (action === "checkMemberPc") {
     res = await getBuildInfo("member-pc-ui");
+  } else if (action === "save1") {
+    // res = callbackQuery;
+    return insertOneMessagePB({ ...callbackQuery, type: "零食" });
   }
   console.log("---res:---", res);
   bot.editMessageText(JSON.stringify(res), opts);
@@ -70,14 +73,28 @@ bot.onText(/^\/q/, (msg) => {
   });
 });
 bot.on("message", (msg) => {
-  console.log("---msg---", msg);
+  console.log("---msg---", JSON.stringify(msg));
   const chatRecordPath = getChatRecordPath()
   writeFile(chatRecordPath, JSON.stringify(msg));
-  new Kitten({id:msg.message_id, name: msg.from.username, message: msg.text, time: new Date()}).save().then(() => console.log('meow'));
+  insertOneMessageChatRecord(msg)
 });
 
 
-
+// 记账
+bot.onText(/^\/jz/, (msg) => {
+  const chatId = msg.chat.id;
+  const opts = {
+    reply_to_message_id: msg.message_id,
+    reply_markup: {
+      inline_keyboard: [
+        [{text: "零食", switch_inline_query_current_chat: 'money: '}, {text: "饭费", switch_inline_query_current_chat: 'money: '}],
+        [{text: "衣服", switch_inline_query_current_chat: 'money: '}, {text: "日常用品", switch_inline_query_current_chat: 'money: '}],
+        [{text: "水电住宿", switch_inline_query_current_chat: 'money: '}, {text: "交通", switch_inline_query_current_chat: 'money: '}],
+      ],
+    },
+  };
+  bot.sendMessage(chatId, "选择记账类型", opts);
+});
 
 
 

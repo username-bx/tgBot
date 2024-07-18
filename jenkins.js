@@ -1,6 +1,7 @@
 const Jenkins = require("jenkins");
 const jenkins = new Jenkins({
-  baseUrl: "http://benjamin:123456@18.167.78.168:8080",
+  // baseUrl: "http://benjamin:123456@18.167.78.168:8080",
+  baseUrl: "http://benjamin:123456@43.198.73.196:8080/",
 });
 const jenkinsLX = new Jenkins({
   baseUrl:

@@ -1,31 +1,61 @@
-const mongoose = require('mongoose');
-mongoose.connect('mongodb://127.0.0.1:27017/admin').then((err) => {
-  console.log('mongoose connected')
-});
 // 以下参数分别填写您的 mongodb 用户名，密码，实例 IP 地址 和 端口号
 // var dbUri = "mongodb://" + user + ":" + password + "@" + host + ":" + port + "/" + dbName;
 
-
-const kittySchema = new mongoose.Schema({
-  id: Number,
-  name: String,
-  message: String,
-  time: { type: Date, default: Date.now }
+const { MongoClient } = require("mongodb")
+const uri = "mongodb://localhost:27017";
+const client = new MongoClient(uri);
+client.connect().then(() => {
+  console.log('mongodb connected')
 });
-const Kitten = mongoose.model('Kitten', kittySchema);
+/**
+ * 
+ * @param {*} data 
+ */
+async function insertOneMessagePB(data) {
+  try {
+    const database = client.db("tgDB");
+    const pocketBook = database.collection("pocketBook");
+    const doc = {
+      messageId: data.messageId,
+      title: data.type,
+      type: data.type,
+      value: data.text,
+      desc: data.desc,
+      name: data.name,
+      time: new Date().getTime(),
+    }
+    const result = await pocketBook.insertOne(doc);
+    console.log(`A document was inserted with the _id: ${result.insertedId}`);
+  } finally {
+    // await client.close();
+  }
+}
 
 
-
-// const Cat = mongoose.model('Cat', { name: String });
-
-// const kitty = new Cat({ name: 'Zildjian' });
-// kitty.save().then(() => console.log('meow'));
-
-
-const { MongoClient, ServerApiVersion } = require("mongodb");
-
-
+/**
+ * 存数据库
+ * @param {*} data 
+ */
+async function insertOneMessageChatRecord(msg) {
+  try {
+    const database = client.db("tgDB");
+    const chatRecord = database.collection("chatRecord");
+    const doc = {
+      messageId: msg.message_id,
+      form: msg.from,
+      message: msg.text,
+      chat: msg.chat,
+      time: new Date().getTime(),
+      originMessage: msg
+    }
+    const result = await chatRecord.insertOne(doc);
+    console.log(`A document was inserted with the _id: ${result.insertedId}`);
+  } finally {
+    // await client.close();
+  }
+}
 
 module.exports = {
-    Kitten
+  insertOneMessagePB,
+  insertOneMessageChatRecord
 }
