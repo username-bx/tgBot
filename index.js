@@ -2,14 +2,10 @@ const { buildJob, getBuildInfo, getQueue } = require('./jenkins');
 const { writeFile, getChatRecordPath } = require('./saveFile');
 const { insertOneMessagePB, insertOneMessageChatRecord } = require('./mongodb');
 const { bot } = require('./telegram');
-
-
-const CronJob = require('cron').CronJob;
-const job = new CronJob('*/5 * * * *', () => {
-  console.log('每隔1分钟执行一次的定时任务');
-  bot.sendMessage(6662926132, '欠我3000,记得还钱');
-});
+const { job } = require('./schedule');
 // job.start();
+
+
 
 
 // Handle callback queries
@@ -81,6 +77,9 @@ bot.on("message", (msg) => {
   console.log("---msg---", JSON.stringify(msg));
   const chatRecordPath = getChatRecordPath()
   writeFile(chatRecordPath, JSON.stringify(msg));
+  if (msg && msg.entities && msg.entities[0].type === "mention") {
+    return insertOneMessagePB(msg)
+  }
   insertOneMessageChatRecord(msg)
 });
 
@@ -92,9 +91,9 @@ bot.onText(/^\/jz/, (msg) => {
     reply_to_message_id: msg.message_id,
     reply_markup: {
       inline_keyboard: [
-        [{text: "零食", switch_inline_query_current_chat: 'money: '}, {text: "饭费", switch_inline_query_current_chat: 'money: '}],
-        [{text: "衣服", switch_inline_query_current_chat: 'money: '}, {text: "日常用品", switch_inline_query_current_chat: 'money: '}],
-        [{text: "水电住宿", switch_inline_query_current_chat: 'money: '}, {text: "交通", switch_inline_query_current_chat: 'money: '}],
+        [{text: "零食", switch_inline_query_current_chat: '零食 money: '}, {text: "饭费", switch_inline_query_current_chat: '饭费 money: '}],
+        [{text: "衣服", switch_inline_query_current_chat: '衣服 money: '}, {text: "日常用品", switch_inline_query_current_chat: '日常用品 money: '}],
+        [{text: "水电住宿", switch_inline_query_current_chat: '水电住宿 money: '}, {text: "交通", switch_inline_query_current_chat: '交通 money: '}],
       ],
     },
   };
