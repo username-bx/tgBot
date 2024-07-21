@@ -1,6 +1,6 @@
 const { buildJob, getBuildInfo, getQueue } = require('./jenkins');
 const { writeFile, getChatRecordPath } = require('./saveFile');
-const { insertOneMessagePB, insertOneMessageChatRecord } = require('./mongodb');
+const { insertOneMessagePB, insertOneMessageChatRecord, insertOneImageChatRecord } = require('./mongodb');
 const { bot } = require('./telegram');
 const { job } = require('./schedule');
 // job.start();
@@ -79,6 +79,8 @@ bot.on("message", (msg) => {
   writeFile(chatRecordPath, JSON.stringify(msg));
   if (msg && msg.entities && msg.entities[0].type === "mention") {
     return insertOneMessagePB(msg)
+  } else if (msg && msg.photo && msg.photo.length > 0) {
+    insertOneImageChatRecord(msg)
   }
   insertOneMessageChatRecord(msg)
 });

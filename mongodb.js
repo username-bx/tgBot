@@ -55,7 +55,16 @@ async function insertOneMessageChatRecord(msg) {
   }
 }
 
+/**
+ * 存图片
+ */
+function insertOneImageChatRecord () {
+
+}
+
+
 module.exports = {
   insertOneMessagePB,
-  insertOneMessageChatRecord
+  insertOneMessageChatRecord,
+  insertOneImageChatRecord
 }
